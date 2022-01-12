@@ -112,7 +112,7 @@ class PlayStatement:
                 print (i, k)
                 sound = pygame.sndarray.make_sound(x)
                 sound.play(-1)
-                time.sleep(len(x)/(self.sample_rate * 1.0))
+                time.sleep(60.0 / (self.tempo * (self.notelen / 4.0)))
                 sound.stop()
                 self.notelen = 4
 
