@@ -26,7 +26,9 @@ class PlayStatement:
     volume_factor = 1 / 10 ** (2/20.0)
     modifier = 0
     stac = False
-    notelen = 4
+    default_notelen = 4
+    current_notelen = default_notelen
+    notelen = current_notelen
     duration = 0
     major_notes = "cdefgab"
     starting_note = -9
@@ -51,7 +53,8 @@ class PlayStatement:
     def build_samples(self, frequency):
         period = int(round(self.sample_rate / frequency))
         samples = array("h", [0] * period)
-        amplitude = 2 ** (15) - 1
+        #amplitude = 2 ** (15) - 1
+        amplitude = self.current_volume
         for time in range(period):
             if time < period / 2:
                 samples[time] = amplitude
@@ -67,6 +70,7 @@ class PlayStatement:
         tokenized = [f for f in re.findall("([a-z]|[0-9]+|[#+-><])", play_string) if f]
         myarray = []
         for j, i in enumerate(tokenized):
+            print(j,i)
             try:
                 k = tokenized[j+1]
             except:
@@ -74,6 +78,9 @@ class PlayStatement:
             sharp = 0
             if i == ">":
                 self.modifier += 12
+            if i == "l":
+                self.current_notelen = int(k)
+                print("notelen = " + str(self.current_notelen))
             elif i == "<":
                 self.modifier -= 12
             elif i in ("n", "l"):
@@ -89,9 +96,7 @@ class PlayStatement:
                     self.env = 0
             elif i == "v":
                 print(k)
-                self.current_vol = int(k)
-                self.current_volume = int(k) * self.vol_steps
-                print(self.current_volume)
+                self.current_volume = self.volumes[int(k)]
             elif i == "o":
                 self.modifier = (int(k) - self.octave) * 12
             elif i == "p":
@@ -113,16 +118,19 @@ class PlayStatement:
                 sound = pygame.sndarray.make_sound(x)
                 sound.play(-1)
                 time.sleep(60.0 / (self.tempo * (self.notelen / 4.0)))
+                print(self.notelen, self.tempo)
                 sound.stop()
-                self.notelen = 4
+            self.notelen = self.current_notelen
 
     def sound(self):
          self.parse_string(self.statement)
 
-m = ["E8 E8 F8 G8 G8 F8 E8 D8 C8 C8 E8 E8 E8 D12 D4",
-     "E8 E8 F8 C8 G8 F8 E8 D8 C8 C8 D8 E8 D8 C12 C4",
-     "D8 D8 E8 C8 D8 E12 F12 E8 C8 D8 E12 F12 E8 D8 C8 D8 P8",
-     "E8 E8 F8 G8 G8 F8 E8 D8 C8 C8 D8 E8 D8 C12 C4"]
+#m = ["E8 E8 F8 G8 G8 F8 E8 D8 C8 C8 E8 E8 E8 D12 D4",
+#     "E8 E8 F8 C8 G8 F8 E8 D8 C8 C8 D8 E8 D8 C12 C4",
+#     "D8 D8 E8 C8 D8 E12 F12 E8 C8 D8 E12 F12 E8 D8 C8 D8 P8",
+#``    "E8 E8 F8 G8 G8 F8 E8 D8 C8 C8 D8 E8 D8 C12 C4"]
+
+m = ["t96l12o3"+"v4<a>v7cv12e"*4]
 
 for i in m:
     play = PlayStatement()
