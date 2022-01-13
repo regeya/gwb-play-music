@@ -16,15 +16,14 @@ class PlayStatement:
     bits = 16
     tempo = 120
     a3 = 440
-    octave = 3 # default to 3
+    octave = 4 # default to 4
     sample_rate = 44100
     max_sample = 2**(bits - 1) - 1 # for example, if 16 bits, highest positive number is 2**(15) -1 or 32767
-    default_volume = 15
-    current_volume = default_volume
-    top_amp = 16384
+    default_volume = 9
+    top_amp = int(max_sample)
     volumes = [0]*16
     volume_factor = 1 / 10 ** (2/20.0)
-    modifier = 0
+    modifier = 12
     stac = False
     default_notelen = 4
     current_notelen = default_notelen
@@ -38,14 +37,17 @@ class PlayStatement:
     statement = ""
 
     def __init__(self):
+        self.modifier = (self.octave - self.octave) * 12
         note = self.starting_note
         amp = self.top_amp
         for i, j in zip(self.major_notes, self.intervals):
             self.notes_range[i] = note
             note += j
+        print(self.notes_range)
         for i in range(15,0,-1):
             self.volumes[i] = int(amp)
             amp *= self.volume_factor
+        self.current_volume = self.volumes[self.default_volume]
         pygame.mixer.pre_init(self.sample_rate, -self.bits, 1)
         pygame.init()
         self.array = []
@@ -53,7 +55,6 @@ class PlayStatement:
     def build_samples(self, frequency):
         period = int(round(self.sample_rate / frequency))
         samples = array("h", [0] * period)
-        #amplitude = 2 ** (15) - 1
         amplitude = self.current_volume
         for time in range(period):
             if time < period / 2:
@@ -95,8 +96,10 @@ class PlayStatement:
                 else:
                     self.env = 0
             elif i == "v":
-                print(k)
-                self.current_volume = self.volumes[int(k)]
+                if int(k) > 9:
+                    self.current_volume = self.volumes[9]
+                else:
+                    self.current_volume = self.volumes[int(k)]
             elif i == "o":
                 self.modifier = (int(k) - self.octave) * 12
             elif i == "p":
@@ -130,7 +133,7 @@ class PlayStatement:
 #     "D8 D8 E8 C8 D8 E12 F12 E8 C8 D8 E12 F12 E8 D8 C8 D8 P8",
 #``    "E8 E8 F8 G8 G8 F8 E8 D8 C8 C8 D8 E8 D8 C12 C4"]
 
-m = ["t96l12o3"+"v4<a>v7cv12e"*4]
+m = ["t64l12"+"v4<a>v7cv12e"*4]
 
 for i in m:
     play = PlayStatement()
