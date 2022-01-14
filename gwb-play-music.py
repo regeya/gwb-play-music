@@ -48,8 +48,7 @@ class PlayStatement:
             self.volumes[i] = int(amp)
             amp *= self.volume_factor
         self.current_volume = self.volumes[self.default_volume]
-        pygame.mixer.pre_init(self.sample_rate, -self.bits, 1)
-        pygame.init()
+        pygame.mixer.init(frequency=self.sample_rate, size=-self.bits, channels=1, allowedchanges=0)
         self.array = []
 
     def build_samples(self, frequency):
