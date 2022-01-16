@@ -15,7 +15,7 @@ class PlayStatement:
     """an attempt to write a GW-BASIC style PLAY, complete with square-wave audio"""
     bits = 16
     tempo = 120
-    a3 = 440
+    a4 = 1760
     octave = 4 # default to 4
     sample_rate = 44100
     max_sample = 2**(bits - 1) - 1 # for example, if 16 bits, highest positive number is 2**(15) -1 or 32767
@@ -23,7 +23,8 @@ class PlayStatement:
     top_amp = int(max_sample)
     volumes = [0]*16
     volume_factor = 1 / 10 ** (2/20.0)
-    modifier = 12
+    note_dur = 7/8.0
+    modifier = 0
     stac = False
     default_notelen = 4
     current_notelen = default_notelen
@@ -37,7 +38,6 @@ class PlayStatement:
     statement = ""
 
     def __init__(self):
-        self.modifier = (self.octave - self.octave) * 12
         note = self.starting_note
         amp = self.top_amp
         for i, j in zip(self.major_notes, self.intervals):
@@ -52,7 +52,7 @@ class PlayStatement:
         self.array = []
 
     def build_samples(self, frequency):
-        period = int(round(self.sample_rate / frequency))
+        period = int(self.sample_rate / frequency)
         samples = array("h", [0] * period)
         amplitude = self.current_volume
         for time in range(period):
@@ -63,7 +63,7 @@ class PlayStatement:
         return samples
 
     def play_note(self, i, sharp):
-        frequency = self.a3 * (2 ** ((self.notes_range[i]+self.modifier+sharp)/12.0))
+        frequency = self.a4 * (2 ** ((self.notes_range[i]+self.modifier+sharp)/12.0))
         return self.build_samples(frequency)
 
     def parse_string(self, play_string):
@@ -83,10 +83,12 @@ class PlayStatement:
                 print("notelen = " + str(self.current_notelen))
             elif i == "<":
                 self.modifier -= 12
-            elif i in ("n", "l"):
-                self.stac = False
+            elif i == "l":
+                self.note_dur = 1.0
+            elif i == "n":
+                self.note_dur = 0.875
             elif i == "s":
-                self.stac = True
+                self.note_dur = 0.75
             elif i == "t":
                 self.tempo = int(k)
             elif i == "q":
@@ -119,15 +121,18 @@ class PlayStatement:
                 print (i, k)
                 sound = pygame.sndarray.make_sound(x)
                 sound.play(-1)
-                time.sleep(60.0 / (self.tempo * (self.notelen / 4.0)))
-                print(self.notelen, self.tempo)
+                my_duration = 60.0 / (self.tempo * (self.notelen / 4.0))
+                cur_duration = my_duration * self.note_dur
+                cur_pause = my_duration - cur_duration
+                sleep(cur_duration)
                 sound.stop()
+                sleep(cur_pause)
             self.notelen = self.current_notelen
 
     def sound(self):
          self.parse_string(self.statement)
 
-m = ["E8 E8 F8 G8 G8 F8 E8 D8 C8 C8 E8 E8 E8 D12 D4",
+m = ["O3c O4 E8 E8 F8 G8 G8 F8 E8 D8 C8 C8 E8 E8 E8 D12 D4",
      "E8 E8 F8 C8 G8 F8 E8 D8 C8 C8 D8 E8 D8 C12 C4",
      "D8 D8 E8 C8 D8 E12 F12 E8 C8 D8 E12 F12 E8 D8 C8 D8 P8",
      "E8 E8 F8 G8 G8 F8 E8 D8 C8 C8 D8 E8 D8 C12 C4"]
