@@ -15,16 +15,16 @@ class PlayStatement:
     """an attempt to write a GW-BASIC style PLAY, complete with square-wave audio"""
     bits = 16
     tempo = 120
-    a3 = 440
-    octave = 3 # default to 4
+    a4 = 1760
+    octave = 4 # default to 4
     sample_rate = 44100
     max_sample = 2**(bits - 1) - 1 # for example, if 16 bits, highest positive number is 2**(15) -1 or 32767
     default_volume = 9
     top_amp = int(max_sample)
     volumes = [0]*16
     volume_factor = 1 / 10 ** (2/20.0)
-    modifier = 12
-    stac = False
+    note_dur = 7/8.0
+    modifier = 0
     default_notelen = 4
     current_notelen = default_notelen
     notelen = current_notelen
@@ -51,7 +51,7 @@ class PlayStatement:
         self.array = []
 
     def build_samples(self, frequency):
-        period = int(round(self.sample_rate / frequency))
+        period = int(self.sample_rate / frequency)
         samples = array("h", [0] * period)
         amplitude = self.current_volume
         for time in range(period):
@@ -62,7 +62,7 @@ class PlayStatement:
         return samples
 
     def play_note(self, i, sharp):
-        frequency = self.a3 * (2 ** ((self.notes_range[i]+self.modifier+sharp)/12.0))
+        frequency = self.a4 * (2 ** ((self.notes_range[i]+self.modifier+sharp)/12.0))
         return self.build_samples(frequency)
 
     def parse_string(self, play_string):
@@ -82,10 +82,12 @@ class PlayStatement:
                 print("notelen = " + str(self.current_notelen))
             elif i == "<":
                 self.modifier -= 12
-            elif i in ("n", "l"):
-                self.stac = False
+            elif i == "l":
+                self.note_dur = 1.0
+            elif i == "n":
+                self.note_dur = 0.875
             elif i == "s":
-                self.stac = True
+                self.note_dur = 0.75
             elif i == "t":
                 self.tempo = int(k)
             elif i == "q":
@@ -118,9 +120,12 @@ class PlayStatement:
                 print (i, k)
                 sound = pygame.sndarray.make_sound(x)
                 sound.play(-1)
-                time.sleep(60.0 / (self.tempo * (self.notelen / 4.0)))
-                print(self.notelen, self.tempo)
+                my_duration = 60.0 / (self.tempo * (self.notelen / 4.0))
+                cur_duration = my_duration * self.note_dur
+                cur_pause = my_duration - cur_duration
+                sleep(cur_duration)
                 sound.stop()
+                sleep(cur_pause)
             self.notelen = self.current_notelen
 
     def sound(self):
