@@ -16,7 +16,7 @@ class PlayStatement:
     bits = 16
     tempo = 120
     a3 = 440
-    octave = 4 # default to 4
+    octave = 3 # default to 4
     sample_rate = 44100
     max_sample = 2**(bits - 1) - 1 # for example, if 16 bits, highest positive number is 2**(15) -1 or 32767
     default_volume = 9
@@ -37,7 +37,6 @@ class PlayStatement:
     statement = ""
 
     def __init__(self):
-        self.modifier = (self.octave - self.octave) * 12
         note = self.starting_note
         amp = self.top_amp
         for i, j in zip(self.major_notes, self.intervals):
