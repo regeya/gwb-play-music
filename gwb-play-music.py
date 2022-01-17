@@ -25,7 +25,6 @@ class PlayStatement:
     volume_factor = 1 / 10 ** (2/20.0)
     note_dur = 7/8.0
     modifier = 0
-    stac = False
     default_notelen = 4
     current_notelen = default_notelen
     notelen = current_notelen
@@ -132,7 +131,7 @@ class PlayStatement:
     def sound(self):
          self.parse_string(self.statement)
 
-m = ["O3c O4 E8 E8 F8 G8 G8 F8 E8 D8 C8 C8 E8 E8 E8 D12 D4",
+m = ["E8 E8 F8 G8 G8 F8 E8 D8 C8 C8 E8 E8 E8 D12 D4",
      "E8 E8 F8 C8 G8 F8 E8 D8 C8 C8 D8 E8 D8 C12 C4",
      "D8 D8 E8 C8 D8 E12 F12 E8 C8 D8 E12 F12 E8 D8 C8 D8 P8",
      "E8 E8 F8 G8 G8 F8 E8 D8 C8 C8 D8 E8 D8 C12 C4"]
