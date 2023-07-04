@@ -10,6 +10,25 @@ import struct
 import string
 from array import array
 from time import sleep
+from datetime import datetime
+
+class Note(Sound):
+
+    def __init__(self, frequency, volume=.1):
+        self.frequency = frequency
+        Sound.__init__(self, self.build_samples())
+        self.set_volume(volume)
+
+    def build_samples(self):
+        period = int(round(get_init()[0] / self.frequency))
+        samples = array("h", [0] * period)
+        amplitude = 2 ** (abs(get_init()[1]) - 1) - 1
+        for time in range(period):
+            if time < period / 2:
+                samples[time] = amplitude
+            else:
+                samples[time] = -amplitude
+        return samples
 
 class PlayStatement:
     """an attempt to write a GW-BASIC style PLAY, complete with square-wave audio"""
@@ -42,7 +61,6 @@ class PlayStatement:
         for i, j in zip(self.major_notes, self.intervals):
             self.notes_range[i] = note
             note += j
-        print(self.notes_range)
         for i in range(15,0,-1):
             self.volumes[i] = int(amp)
             amp *= self.volume_factor
@@ -70,7 +88,6 @@ class PlayStatement:
         mychannel=0
         timecode=0
         tokenized = [f for f in re.findall("([a-z]|[0-9]+|[#+-><])", play_string) if f]
-        print(tokenized)
         myarray = []
         for j, i in enumerate(tokenized):
             try:
@@ -108,7 +125,7 @@ class PlayStatement:
                 if k:
                     self.notelen = int(k)
                     f = 60.0/(self.tempo*(self.notelen/4.0))
-                    mybuffer.append([mychannel,0,self.current_volume,int(timecode+f+1000000)])
+                    mybuffer.append([mychannel,0,self.current_volume,int((timecode+f)*1000)])
             elif i in self.major_notes:
                 if k:
                     if k == "#" or k == "+":
@@ -117,24 +134,31 @@ class PlayStatement:
                         sharp = -1
                     elif k.isdigit():
                         self.notelen = int(k)
-                x = self.play_note(i, sharp)
-                print (i, k)
-                sound = pygame.sndarray.make_sound(x)
+#                x = self.play_note(i, sharp)
+#                sound = pygame.sndarray.make_sound(x)
                 frequency = self.a4 * (2 ** ((self.notes_range[i]+self.modifier+sharp)/12.0))
-                mybuffer.append([mychannel, int(frequency), self.current_volume, int(timecode*1000000)])
-                sound.play(-1)
+                mybuffer.append([mychannel, round(frequency), self.current_volume, int(timecode*1000)])
+#                sound.play(-1)
                 my_duration = 60.0 / (self.tempo * (self.notelen / 4.0))
                 cur_duration = my_duration * self.note_dur
                 cur_pause = my_duration - cur_duration
-                sleep(cur_duration)
+#               sleep(cur_duration)
                 timecode += cur_duration
-                mybuffer.append([mychannel,0,self.current_volume, int(timecode*1000000)])
-                sound.stop()
+                mybuffer.append([mychannel,0,self.current_volume, int(timecode*1000)])
+#                sound.stop()
                 sleep(cur_pause)
                 timecode += cur_pause
             self.notelen = self.current_notelen
+        dt = datetime.now()
         print(mybuffer)
-
+        for i in mybuffer:
+            mdt = int((datetime.now() - dt).total_seconds() * 1000)
+            while mdt < i[3]:
+                mdt = int((datetime.now() - dt).total_seconds() * 1000)
+            if i[1] == 0:
+                pygame.mixer.Channel(0).stop()
+            else:
+                pygame.mixer.Channel(0).play(Note(i[1]), -1)
     def sound(self):
          self.parse_string(self.statement)
 
