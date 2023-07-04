@@ -67,6 +67,7 @@ class PlayStatement:
 
     def parse_string(self, play_string):
         tokenized = [f for f in re.findall("([a-z]|[0-9]+|[#+-><])", play_string) if f]
+        print(tokenized)
         myarray = []
         for j, i in enumerate(tokenized):
             print(j,i)
@@ -131,10 +132,14 @@ class PlayStatement:
     def sound(self):
          self.parse_string(self.statement)
 
+#m = ["o2l6p6p6go3el12p12dl6ecl3fl12fl24edl12eagal6dl3gl12gl24fel12fco2bo3f",
+#     "o2l6p6p6p6p6p6cal12p12gl6ago3l3cl12cl24o2bal12bo3edel6o2al3o3d",
+#     "o1l1ccc"]
+
 m = ["E8 E8 F8 G8 G8 F8 E8 D8 C8 C8 E8 E8 E8 D12 D4",
-     "E8 E8 F8 C8 G8 F8 E8 D8 C8 C8 D8 E8 D8 C12 C4",
-     "D8 D8 E8 C8 D8 E12 F12 E8 C8 D8 E12 F12 E8 D8 C8 D8 P8",
-     "E8 E8 F8 G8 G8 F8 E8 D8 C8 C8 D8 E8 D8 C12 C4"]
+    "E8 E8 F8 C8 G8 F8 E8 D8 C8 C8 D8 E8 D8 C12 C4",
+    "D8 D8 E8 C8 D8 E12 F12 E8 C8 D8 E12 F12 E8 D8 C8 D8 P8",
+    "E8 E8 F8 G8 G8 F8 E8 D8 C8 C8 D8 E8 D8 C12 C4"]
 
 #m = ["t64l12"+"v4<a>v7cv12e"*4]
 
