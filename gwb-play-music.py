@@ -54,8 +54,10 @@ class PlayStatement:
     notes_range={}
     note = starting_note
     statement = ""
+    mybuffer = []
 
     def __init__(self):
+        self.channel = 0
         note = self.starting_note
         amp = self.top_amp
         for i, j in zip(self.major_notes, self.intervals):
@@ -84,8 +86,7 @@ class PlayStatement:
         return self.build_samples(frequency)
 
     def parse_string(self, play_string):
-        mybuffer = []
-        mychannel=0
+        self.mybuffer = []
         timecode=0
         tokenized = [f for f in re.findall("([a-z]|[0-9]+|[#+-><])", play_string) if f]
         myarray = []
@@ -125,7 +126,8 @@ class PlayStatement:
                 if k:
                     self.notelen = int(k)
                     f = 60.0/(self.tempo*(self.notelen/4.0))
-                    mybuffer.append([mychannel,0,self.current_volume,int((timecode+f)*1000)])
+                    self.mybuffer.append([self.channel,0,self.current_volume,int((timecode+f)*1000)])
+                    timecode += f
             elif i in self.major_notes:
                 if k:
                     if k == "#" or k == "+":
@@ -134,46 +136,157 @@ class PlayStatement:
                         sharp = -1
                     elif k.isdigit():
                         self.notelen = int(k)
-#                x = self.play_note(i, sharp)
-#                sound = pygame.sndarray.make_sound(x)
                 frequency = self.a4 * (2 ** ((self.notes_range[i]+self.modifier+sharp)/12.0))
-                mybuffer.append([mychannel, round(frequency), self.current_volume, int(timecode*1000)])
-#                sound.play(-1)
+                self.mybuffer.append([self.channel, frequency, self.current_volume, int(timecode*1000)])
                 my_duration = 60.0 / (self.tempo * (self.notelen / 4.0))
                 cur_duration = my_duration * self.note_dur
                 cur_pause = my_duration - cur_duration
-#               sleep(cur_duration)
                 timecode += cur_duration
-                mybuffer.append([mychannel,0,self.current_volume, int(timecode*1000)])
-#                sound.stop()
-                sleep(cur_pause)
+                self.mybuffer.append([self.channel,0,self.current_volume, int(timecode*1000)])
                 timecode += cur_pause
             self.notelen = self.current_notelen
-        dt = datetime.now()
-        print(mybuffer)
-        for i in mybuffer:
-            mdt = int((datetime.now() - dt).total_seconds() * 1000)
-            while mdt < i[3]:
-                mdt = int((datetime.now() - dt).total_seconds() * 1000)
-            if i[1] == 0:
-                pygame.mixer.Channel(0).stop()
-            else:
-                pygame.mixer.Channel(0).play(Note(i[1]), -1)
+
     def sound(self):
          self.parse_string(self.statement)
+         return self.mybuffer
 
 #m = ["o2l6p6p6go3el12p12dl6ecl3fl12fl24edl12eagal6dl3gl12gl24fel12fco2bo3f",
 #     "o2l6p6p6p6p6p6cal12p12gl6ago3l3cl12cl24o2bal12bo3edel6o2al3o3d",
 #     "o1l1ccc"]
 
-m = ["E8 E8 F8 G8 G8 F8 E8 D8 C8 C8 E8 E8 E8 D12 D4",
-    "E8 E8 F8 C8 G8 F8 E8 D8 C8 C8 D8 E8 D8 C12 C4",
-    "D8 D8 E8 C8 D8 E12 F12 E8 C8 D8 E12 F12 E8 D8 C8 D8 P8",
-    "E8 E8 F8 G8 G8 F8 E8 D8 C8 C8 D8 E8 D8 C12 C4"]
+# music = ["o4 e-8 p8","o3 <b-16 a-16 b-16 >d-16","o2 <g8 >e-8"]
+
+lines = [["mb","mb","mb"],
+["v11 t120 o3 e-8 >e-8","v12 t120 o2 p4","v12 t120 o2 e-4"],
+["o4 <f8 >e-8","o2 p4","o2 e-4"],
+["o4 <g8 >e-8","o2 p4","o2 p4"],
+["o4 <a-8 >e-8","o2 p4","o2 c4"],
+["o4 <b-8 >e-8","o2 p4","o2 c4"],
+["o4 c8 e-8","o2 p4","o2 p4"],
+["o4 <b-16 >e-16 d16 c16","o2 p4","o1 g4"],
+["o4 <b-16 >g16 f16 e-16","o2 p4","o1 a-4"],
+["o4 d16 c16 <b-16 a-16","o2 p4","o1 b-4"],
+["o3 g16 a-16 b-16 g16","o2 p4","o1 e-4"],
+["o3 e-16 g16 b-16 >e-16","o2 p4","o1 g4"],
+["o4 <f16 a16 >c16 e-16","o2 p4","o1 a4"],
+["o4 d16 c16 d16 f16","o2 b-8 >b-8","o1 b-4"],
+["o4 e-16 d16 e-16 g16","o3 c8 b-8","o1 b-4"],
+["o4 f16 e-16 f16 a-16","o3 d8 b-8","o1 p4"],
+["o4 g16 f16 g16 b-16","o3 e-8 b-8","o1 b-4"],
+["o4 d16 c16 d16 b-16","o3 f8 b-8","o1 b-4"],
+["o4 e-16 d16 e-16 b-16","o3 g8 b-8","o1 p4"],
+["o4 d8 f8","o3 f16 b-16 a16 g16","o1 b-4"],
+["o4 b-8 d8","o3 f16 >d16 c16 <b-16","o1 >d4"],
+["o4 c8 a8","o3 a16 g16 f16 e-16","o2 f4"],
+["o4 b-8 d8","o3 d16 e-16 f16 d16","o2 b-4"],
+["o4 f8 d8","o3 <b-16 >d16 f16 b-16","o2 b-4"],
+["o4 <b-8 >d8","o3 d16 f16 a-16 b-16","o2 p4"],
+["o4 e-8 p8","o3 g16 f16 g16 b-16","o1 e-8 >e-8"],
+["o4 e-8 p8","o3 a-16 g16 a-16 >c16","o2 <f8 >e-8"],
+["o4 e-8 p8","o3 <b-16 a-16 b-16 >d-16","o2 <g8 >e-8"],
+["o4 e-8 p8","o4 c16 <b-16 >c16 e-16","o2 <a-8 >e-8"],
+["o4 e-8 p8","o4 <g16 f16 g16 >e-16","o2 <b-8 >e-8"],
+["o4 e-8 p8","o4 <a-16 g16 a-16 >e-16","o2 c8 e-8"],
+["o4 p16 e-16 f16 g16","o4 <g8 b-8","o2 <b-8 p8"],
+["o4 a-16 b-16 >c16 <b-16","o3 >e-8 <g8","o1 >c8 p8"],
+["o4 a-16 g16 f16 a-16","o3 f8 b-8","o2 d8 p8"],
+["o4 g8 <b-8","o3 p16 e-16 f16 g16","o2 e-4"],
+["o3 >c8 <a-8","o3 a-16 b-16 >c16 <b-16","o2 e-4"],
+["o3 >f4","o3 a-16 g16 f16 a-16","o2 d4"],
+["o4 p16 a-16 g16 f16","o3 g8 <b-8","o2 e-4"],
+["o4 e-16 d16 c16 <b-16","o2 >c8 <a-8","o2 a-4"],
+["o3 a-16 g16 a-16 >f16","o2 >f4","o2 p4"],
+["o4 <g16 >f16 e-16 d16","o3 p16 a-16 g16 f16","o2 <b4"],
+["o4 c16 <b-16 a-16 g16","o3 e-16 d16 c16 <b-16","o1 >c4"],
+["o3 f4","o2 a-16 g16 a-16 >f16","o2 d4"],
+["o3 p16 a-16 g16 f16","o3 <g16 >f16 e-16 d16","o2 <e-4"],
+["o3 e-4","o3 c16 <b-16 a-16 g16","o1 a-4"],
+["o3 p16 d16 e-16 f16","o2 f4","o1 a-4"],
+["o3 <b8 >d8","o2 p16 a-16 g16 f16","o1 g4"],
+["o3 g8 b8","o2 e-8 g8","o1 p16 >g16 f16 g16"],
+["o3 >c8 d8","o2 a8 b8","o2 e-16 f16 d16 e-16"],
+["o4 e-16 c16 <b16 >c16","o3 c8 p8","o2 c8 e-8"],
+["o4 <g16 >c16 <b16 >c16","o3 p4","o2 c8 e-8"],
+["o4 e-16 c16 <b-16 >c16","o3 p4","o2 c8 e-8"],
+["o4 <a-8 p8","o3 p16 f16 e-16 f16","o2 <f8 >a-8"],
+["o3 >e-8 p8","o3 c16 f16 e-16 f16","o2 <f8 >a-8"],
+["o4 e-8 p8","o3 a-16 f16 e-16 f16","o2 <f8 >a-8"],
+["o4 p16 <b-16 a-16 b-16","o3 d8 p8","o2 <b-8 >d8"],
+["o3 f16 b-16 a-16 b-16","o3 a-8 p8","o2 <b-8 >d8"],
+["o3 >d16 <b-16 a-16 b-16","o3 a-8 p8","o2 <b-8 >d8"],
+["o3 g8 p8","o3 p16 e-16 d-16 e-16","o2 <e-8 >g8"],
+["o3 >d-8 p8","o3 <b-16 >e-16 d-16 e-16","o2 <e-8 >g8"],
+["o4 d-8 p8","o3 g16 e-16 d-16 e-16","o2 <e-8 g8"],
+["o3 p16 a-16 g16 a-16","o3 c16 f16 e16 f16","o1 a-8 >c8"],
+["o3 f16 a-16 g16 a-16","o3 c16 f16 e16 f16","o2 <a-8 >c8"],
+["o3 >c16 <a-16 g16 a-16","o3 a-16 f16 e-16 f16","o2 <a-8 >c8"],
+["o3 f16 b-16 a-16 b-16","o3 d8 f8","o2 <a-8 >d8"],
+["o3 >d16 <b-16 a-16 b-16","o3 b-4","o2 <a-8 >d8"],
+["o3 >f16 d16 c16 d16","o3 b-4","o2 <a-8 >d8"],
+["o4 b-8 g8","o3 p16 <b-16 a-16 b-16","o2 <g8 >e-8"],
+["o4 e-4","o2 >e-16 <b-16 a-16 b-16","o2 <g8 >e-8"],
+["o4 e-4","o2 >g16 e-16 d16 e-16","o2 <g8 >e-8"],
+["o4 p16 d16 c16 <b-16","o3 a16 b-16 a16 g16","o2 <f4"],
+["o3 a16 b-16 a16 g16","o3 f16 >d16 c16 <b-16","o1 p4"],
+["o3 f16 >e-16 d16 c16","o3 a16 g16 f16 e-16","o1 p4"],
+["o3 b-4","o3 d16 c16 d16 f16","o1 b-8 >b-8"],
+["o3 b-4","o3 e-16 d16 e-16 g16","o2 c8 b-8"],
+["o3 b-4","o3 f16 e-16 f16 a-16","o2 d8 b-8"],
+["o3 p16 a16 b-16 >e-16","o3 g16 f16 g16 b-16","o2 e-8 b-8"],
+["o4 <b-16 a16 b-16 >d16","o3 d16 c16 d16 b-16","o2 f8 b-8"],
+["o4 c4","o3 e-16 d16 e-16 b-16","o2 g8 b-8"],
+["o4 p16 g16 f16 e-16","o3 d4","o2 f8 b-8"],
+["o4 d16 b-16 a16 g16","o3 p16 >d16 c16 <b-16","o2 e-8 b-8"],
+["o4 f16 e-16 d16 c16","o3 a16 g16 f16 e-16","o2 f8 a8"],
+["o3 b-8 >f8","o3 d16 b-16 a16 b-16","o1 b-4"],
+["o4 g8 f8","o3 e-16 b-16 d16 b-16","o1 p4"],
+["o4 g8 f8","o3 e-16 b-16 c16 b-16","o1 p4"],
+["o4 f16 b-16 a16 b-16","o3 d8 f8","o1 b-4"],
+["o4 e-16 b-16 d16 b-16","o3 g8 f8","o1 p4"],
+["o4 e-16 b-16 c16 b-16","o3 g8 e-8","o1 p4"],
+["o4 d4","o3 f16 <b-16 >c16 d16","o1 p8 >f8"],
+["o4 p16 <b-16 >c16 d16","o3 e-4","o2 g8 f8"],
+["o4 e-16 f16 g16 a16","o3 p16 d16 e-16 c16","o2 g8 e-8"],
+["o4 b-8 <b-8","o3 f8 d8","o2 d8 g8"],
+["o3 >c8 p8","o3 e-8 p8","o2 e-8 p8"],
+["o4 <a4","o3 c4","o2 f4"],
+["o3 mlb-4","o3 mld4","o1 mlb-4"],
+["o3 b-4","o3 d4","o1 b-4"],
+["o3 b-4","o3 d4","o1 b-4"]]
+
+
+for music in lines:
+    pianoroll = []
+
+    for f, v in enumerate(music):
+        toparse = PlayStatement()
+        toparse.channel = f
+        toparse.statement = v.lower()
+        pianoroll.extend(toparse.sound())
+
+    pianoroll.sort(key=lambda x: x[3])
+
+    print(pianoroll)
+
+    dt = datetime.now()
+    for i in pianoroll:
+        mdt = int((datetime.now() - dt).total_seconds() * 1000)
+        while mdt < i[3]:
+            mdt = int((datetime.now() - dt).total_seconds() * 1000)
+        if i[1] == 0:
+            pygame.mixer.Channel(i[0]).stop()
+        else:
+            pygame.mixer.Channel(i[0]).play(Note(i[1]), -1)
+
+
+# m = ["E8 E8 F8 G8 G8 F8 E8 D8 C8 C8 E8 E8 E8 D12 D4",
+#     "E8 E8 F8 C8 G8 F8 E8 D8 C8 C8 D8 E8 D8 C12 C4",
+#     "D8 D8 E8 C8 D8 E12 F12 E8 C8 D8 E12 F12 E8 D8 C8 D8 P8",
+#     "E8 E8 F8 G8 G8 F8 E8 D8 C8 C8 D8 E8 D8 C12 C4"]
 
 #m = ["t64l12"+"v4<a>v7cv12e"*4]
 
-for i in m:
-    play = PlayStatement()
-    play.statement = i.lower()
-    play.sound()
+#for i in m:
+#    play = PlayStatement()
+#    play.statement = i.lower()
+#    play.sound()
