@@ -116,6 +116,7 @@ class PlayStatement:
                 else:
                     self.env = 0
             elif i == "v":
+                pianoroll = []
                 if int(k) > 9:
                     self.current_volume = self.volumes[9]
                 else:
