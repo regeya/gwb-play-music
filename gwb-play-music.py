@@ -116,7 +116,6 @@ class PlayStatement:
                 else:
                     self.env = 0
             elif i == "v":
-                pianoroll = []
                 if int(k) > 9:
                     self.current_volume = self.volumes[9]
                 else:
@@ -287,7 +286,7 @@ for music in lines:
 
 #m = ["t64l12"+"v4<a>v7cv12e"*4]
 
-#for i in m:
-#    play = PlayStatement()
-#    play.statement = i.lower()
-#    play.sound()
+for i in m:
+    play = PlayStatement()
+    play.statement = i.lower()
+    play.sound()
