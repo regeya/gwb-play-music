@@ -2,8 +2,6 @@
 # an attempt to write a GW-BASIC-style "play" statement
 
 import pygame
-from pygame.locals import *
-from pygame.mixer import Sound, get_init, pre_init
 import time
 import re
 import struct
@@ -11,9 +9,11 @@ import string
 from array import array
 from time import sleep
 from datetime import datetime
+from pygame.locals import *
+from pygame.mixer import Sound, get_init, pre_init
+from collections import deque
 
 class Note(Sound):
-
     def __init__(self, frequency, volume=.1):
         self.frequency = frequency
         Sound.__init__(self, self.build_samples())
@@ -88,57 +88,80 @@ class PlayStatement:
     def parse_string(self, play_string):
         self.mybuffer = []
         timecode=0
-        tokenized = [f for f in re.findall("([a-z]|[0-9]+|[#+-><])", play_string) if f]
+        tokenized = deque([f for f in re.findall("([a-z]|[0-9]+|[#+-><])", play_string) if f])
         myarray = []
-        for j, i in enumerate(tokenized):
-            try:
-                k = tokenized[j+1]
-            except:
-                k = None
-            sharp = 0
+        while len(tokenized) >= 1:
+            sharp=0
+            i = tokenized.popleft()
             if i == ">":
                 self.modifier += 12
             if i == "l":
+                k = tokenized.popleft()
                 self.current_notelen = int(k)
             elif i == "<":
                 self.modifier -= 12
-            elif i == "l":
-                self.note_dur = 1.0
-            elif i == "n":
-                self.note_dur = 0.875
-            elif i == "s":
-                self.note_dur = 0.75
+            elif i == 'm':
+                j = tokenized.popleft()
+                if j == "l":
+                    self.note_dur = 1.0
+                elif j == "n":
+                    self.note_dur = 0.875
+                elif j == "s":
+                    self.note_dur = 0.75
             elif i == "t":
-                self.tempo = int(k)
+                j = tokenized.popleft()
+                self.tempo = int(j)
             elif i == "q":
-                if int(k) == 1:
+                j = tokenized.popleft()
+                if int(j) == 1:
                     self.env = 1
                 else:
                     self.env = 0
             elif i == "v":
-                if int(k) > 9:
+                j = tokenized.popleft()
+                if int(j) > 9:
                     self.current_volume = self.volumes[9]
                 else:
-                    self.current_volume = self.volumes[int(k)]
+                    self.current_volume = self.volumes[int(j)]
             elif i == "o":
-                self.modifier = (int(k) - self.octave) * 12
+                j = tokenized.popleft()
+                self.modifier = (int(j) - self.octave) * 12
             elif i == "p":
-                if k:
-                    self.notelen = int(k)
+                j = tokenized.popleft()
+                if j:
+                    self.notelen = int(j)
                     f = 60.0/(self.tempo*(self.notelen/4.0))
                     self.mybuffer.append([self.channel,0,self.current_volume,int((timecode+f)*1000)])
                     timecode += f
             elif i in self.major_notes:
-                if k:
-                    if k == "#" or k == "+":
-                        sharp = 1
-                    elif k == "-":
-                        sharp = -1
-                    elif k.isdigit():
-                        self.notelen = int(k)
+                dotted=False
+                try:
+                    k = tokenized.popleft()
+                    print(tokenized, i, k)
+                    if k:
+                        if k == "#" or k == "+":
+                            sharp = 1
+                        elif k == "-":
+                            sharp = -1
+                        elif k.isdigit():
+                            self.notelen = int(k)
+                        else:
+                            tokenized.appendleft(k)
+                except:
+                    print("Queue exhausted and so am I")
+                try:
+                    k = tokenized.popleft()
+                    if k == ".":
+                        dotted = True
+                    else:
+                        tokenized.appendleft(k)
+                except:
+                    print("disconnect the dots")    
                 frequency = self.a4 * (2 ** ((self.notes_range[i]+self.modifier+sharp)/12.0))
                 self.mybuffer.append([self.channel, frequency, self.current_volume, int(timecode*1000)])
                 my_duration = 60.0 / (self.tempo * (self.notelen / 4.0))
+                if dotted:
+                    my_duration = my_duration * (3/2.0)
                 cur_duration = my_duration * self.note_dur
                 cur_pause = my_duration - cur_duration
                 timecode += cur_duration
@@ -156,105 +179,108 @@ class PlayStatement:
 
 # music = ["o4 e-8 p8","o3 <b-16 a-16 b-16 >d-16","o2 <g8 >e-8"]
 
-lines = [["mb","mb","mb"],
-["v11 t120 o3 e-8 >e-8","v12 t120 o2 p4","v12 t120 o2 e-4"],
-["o4 <f8 >e-8","o2 p4","o2 e-4"],
-["o4 <g8 >e-8","o2 p4","o2 p4"],
-["o4 <a-8 >e-8","o2 p4","o2 c4"],
-["o4 <b-8 >e-8","o2 p4","o2 c4"],
-["o4 c8 e-8","o2 p4","o2 p4"],
-["o4 <b-16 >e-16 d16 c16","o2 p4","o1 g4"],
-["o4 <b-16 >g16 f16 e-16","o2 p4","o1 a-4"],
-["o4 d16 c16 <b-16 a-16","o2 p4","o1 b-4"],
-["o3 g16 a-16 b-16 g16","o2 p4","o1 e-4"],
-["o3 e-16 g16 b-16 >e-16","o2 p4","o1 g4"],
-["o4 <f16 a16 >c16 e-16","o2 p4","o1 a4"],
-["o4 d16 c16 d16 f16","o2 b-8 >b-8","o1 b-4"],
-["o4 e-16 d16 e-16 g16","o3 c8 b-8","o1 b-4"],
-["o4 f16 e-16 f16 a-16","o3 d8 b-8","o1 p4"],
-["o4 g16 f16 g16 b-16","o3 e-8 b-8","o1 b-4"],
-["o4 d16 c16 d16 b-16","o3 f8 b-8","o1 b-4"],
-["o4 e-16 d16 e-16 b-16","o3 g8 b-8","o1 p4"],
-["o4 d8 f8","o3 f16 b-16 a16 g16","o1 b-4"],
-["o4 b-8 d8","o3 f16 >d16 c16 <b-16","o1 >d4"],
-["o4 c8 a8","o3 a16 g16 f16 e-16","o2 f4"],
-["o4 b-8 d8","o3 d16 e-16 f16 d16","o2 b-4"],
-["o4 f8 d8","o3 <b-16 >d16 f16 b-16","o2 b-4"],
-["o4 <b-8 >d8","o3 d16 f16 a-16 b-16","o2 p4"],
-["o4 e-8 p8","o3 g16 f16 g16 b-16","o1 e-8 >e-8"],
-["o4 e-8 p8","o3 a-16 g16 a-16 >c16","o2 <f8 >e-8"],
-["o4 e-8 p8","o3 <b-16 a-16 b-16 >d-16","o2 <g8 >e-8"],
-["o4 e-8 p8","o4 c16 <b-16 >c16 e-16","o2 <a-8 >e-8"],
-["o4 e-8 p8","o4 <g16 f16 g16 >e-16","o2 <b-8 >e-8"],
-["o4 e-8 p8","o4 <a-16 g16 a-16 >e-16","o2 c8 e-8"],
-["o4 p16 e-16 f16 g16","o4 <g8 b-8","o2 <b-8 p8"],
-["o4 a-16 b-16 >c16 <b-16","o3 >e-8 <g8","o1 >c8 p8"],
-["o4 a-16 g16 f16 a-16","o3 f8 b-8","o2 d8 p8"],
-["o4 g8 <b-8","o3 p16 e-16 f16 g16","o2 e-4"],
-["o3 >c8 <a-8","o3 a-16 b-16 >c16 <b-16","o2 e-4"],
-["o3 >f4","o3 a-16 g16 f16 a-16","o2 d4"],
-["o4 p16 a-16 g16 f16","o3 g8 <b-8","o2 e-4"],
-["o4 e-16 d16 c16 <b-16","o2 >c8 <a-8","o2 a-4"],
-["o3 a-16 g16 a-16 >f16","o2 >f4","o2 p4"],
-["o4 <g16 >f16 e-16 d16","o3 p16 a-16 g16 f16","o2 <b4"],
-["o4 c16 <b-16 a-16 g16","o3 e-16 d16 c16 <b-16","o1 >c4"],
-["o3 f4","o2 a-16 g16 a-16 >f16","o2 d4"],
-["o3 p16 a-16 g16 f16","o3 <g16 >f16 e-16 d16","o2 <e-4"],
-["o3 e-4","o3 c16 <b-16 a-16 g16","o1 a-4"],
-["o3 p16 d16 e-16 f16","o2 f4","o1 a-4"],
-["o3 <b8 >d8","o2 p16 a-16 g16 f16","o1 g4"],
-["o3 g8 b8","o2 e-8 g8","o1 p16 >g16 f16 g16"],
-["o3 >c8 d8","o2 a8 b8","o2 e-16 f16 d16 e-16"],
-["o4 e-16 c16 <b16 >c16","o3 c8 p8","o2 c8 e-8"],
-["o4 <g16 >c16 <b16 >c16","o3 p4","o2 c8 e-8"],
-["o4 e-16 c16 <b-16 >c16","o3 p4","o2 c8 e-8"],
-["o4 <a-8 p8","o3 p16 f16 e-16 f16","o2 <f8 >a-8"],
-["o3 >e-8 p8","o3 c16 f16 e-16 f16","o2 <f8 >a-8"],
-["o4 e-8 p8","o3 a-16 f16 e-16 f16","o2 <f8 >a-8"],
-["o4 p16 <b-16 a-16 b-16","o3 d8 p8","o2 <b-8 >d8"],
-["o3 f16 b-16 a-16 b-16","o3 a-8 p8","o2 <b-8 >d8"],
-["o3 >d16 <b-16 a-16 b-16","o3 a-8 p8","o2 <b-8 >d8"],
-["o3 g8 p8","o3 p16 e-16 d-16 e-16","o2 <e-8 >g8"],
-["o3 >d-8 p8","o3 <b-16 >e-16 d-16 e-16","o2 <e-8 >g8"],
-["o4 d-8 p8","o3 g16 e-16 d-16 e-16","o2 <e-8 g8"],
-["o3 p16 a-16 g16 a-16","o3 c16 f16 e16 f16","o1 a-8 >c8"],
-["o3 f16 a-16 g16 a-16","o3 c16 f16 e16 f16","o2 <a-8 >c8"],
-["o3 >c16 <a-16 g16 a-16","o3 a-16 f16 e-16 f16","o2 <a-8 >c8"],
-["o3 f16 b-16 a-16 b-16","o3 d8 f8","o2 <a-8 >d8"],
-["o3 >d16 <b-16 a-16 b-16","o3 b-4","o2 <a-8 >d8"],
-["o3 >f16 d16 c16 d16","o3 b-4","o2 <a-8 >d8"],
-["o4 b-8 g8","o3 p16 <b-16 a-16 b-16","o2 <g8 >e-8"],
-["o4 e-4","o2 >e-16 <b-16 a-16 b-16","o2 <g8 >e-8"],
-["o4 e-4","o2 >g16 e-16 d16 e-16","o2 <g8 >e-8"],
-["o4 p16 d16 c16 <b-16","o3 a16 b-16 a16 g16","o2 <f4"],
-["o3 a16 b-16 a16 g16","o3 f16 >d16 c16 <b-16","o1 p4"],
-["o3 f16 >e-16 d16 c16","o3 a16 g16 f16 e-16","o1 p4"],
-["o3 b-4","o3 d16 c16 d16 f16","o1 b-8 >b-8"],
-["o3 b-4","o3 e-16 d16 e-16 g16","o2 c8 b-8"],
-["o3 b-4","o3 f16 e-16 f16 a-16","o2 d8 b-8"],
-["o3 p16 a16 b-16 >e-16","o3 g16 f16 g16 b-16","o2 e-8 b-8"],
-["o4 <b-16 a16 b-16 >d16","o3 d16 c16 d16 b-16","o2 f8 b-8"],
-["o4 c4","o3 e-16 d16 e-16 b-16","o2 g8 b-8"],
-["o4 p16 g16 f16 e-16","o3 d4","o2 f8 b-8"],
-["o4 d16 b-16 a16 g16","o3 p16 >d16 c16 <b-16","o2 e-8 b-8"],
-["o4 f16 e-16 d16 c16","o3 a16 g16 f16 e-16","o2 f8 a8"],
-["o3 b-8 >f8","o3 d16 b-16 a16 b-16","o1 b-4"],
-["o4 g8 f8","o3 e-16 b-16 d16 b-16","o1 p4"],
-["o4 g8 f8","o3 e-16 b-16 c16 b-16","o1 p4"],
-["o4 f16 b-16 a16 b-16","o3 d8 f8","o1 b-4"],
-["o4 e-16 b-16 d16 b-16","o3 g8 f8","o1 p4"],
-["o4 e-16 b-16 c16 b-16","o3 g8 e-8","o1 p4"],
-["o4 d4","o3 f16 <b-16 >c16 d16","o1 p8 >f8"],
-["o4 p16 <b-16 >c16 d16","o3 e-4","o2 g8 f8"],
-["o4 e-16 f16 g16 a16","o3 p16 d16 e-16 c16","o2 g8 e-8"],
-["o4 b-8 <b-8","o3 f8 d8","o2 d8 g8"],
-["o3 >c8 p8","o3 e-8 p8","o2 e-8 p8"],
-["o4 <a4","o3 c4","o2 f4"],
-["o3 mlb-4","o3 mld4","o1 mlb-4"],
-["o3 b-4","o3 d4","o1 b-4"],
-["o3 b-4","o3 d4","o1 b-4"]]
+# lines = [["mb","mb","mb"],
+# ["v11 t120 o3 e-8 >e-8","v12 t120 o2 p4","v12 t120 o2 e-4"],
+# ["o4 <f8 >e-8","o2 p4","o2 e-4"],
+# ["o4 <g8 >e-8","o2 p4","o2 p4"],
+# ["o4 <a-8 >e-8","o2 p4","o2 c4"],
+# ["o4 <b-8 >e-8","o2 p4","o2 c4"],
+# ["o4 c8 e-8","o2 p4","o2 p4"],
+# ["o4 <b-16 >e-16 d16 c16","o2 p4","o1 g4"],
+# ["o4 <b-16 >g16 f16 e-16","o2 p4","o1 a-4"],
+# ["o4 d16 c16 <b-16 a-16","o2 p4","o1 b-4"],
+# ["o3 g16 a-16 b-16 g16","o2 p4","o1 e-4"],
+# ["o3 e-16 g16 b-16 >e-16","o2 p4","o1 g4"],
+# ["o4 <f16 a16 >c16 e-16","o2 p4","o1 a4"],
+# ["o4 d16 c16 d16 f16","o2 b-8 >b-8","o1 b-4"],
+# ["o4 e-16 d16 e-16 g16","o3 c8 b-8","o1 b-4"],
+# ["o4 f16 e-16 f16 a-16","o3 d8 b-8","o1 p4"],
+# ["o4 g16 f16 g16 b-16","o3 e-8 b-8","o1 b-4"],
+# ["o4 d16 c16 d16 b-16","o3 f8 b-8","o1 b-4"],
+# ["o4 e-16 d16 e-16 b-16","o3 g8 b-8","o1 p4"],
+# ["o4 d8 f8","o3 f16 b-16 a16 g16","o1 b-4"],
+# ["o4 b-8 d8","o3 f16 >d16 c16 <b-16","o1 >d4"],
+# ["o4 c8 a8","o3 a16 g16 f16 e-16","o2 f4"],
+# ["o4 b-8 d8","o3 d16 e-16 f16 d16","o2 b-4"],
+# ["o4 f8 d8","o3 <b-16 >d16 f16 b-16","o2 b-4"],
+# ["o4 <b-8 >d8","o3 d16 f16 a-16 b-16","o2 p4"],
+# ["o4 e-8 p8","o3 g16 f16 g16 b-16","o1 e-8 >e-8"],
+# ["o4 e-8 p8","o3 a-16 g16 a-16 >c16","o2 <f8 >e-8"],
+# ["o4 e-8 p8","o3 <b-16 a-16 b-16 >d-16","o2 <g8 >e-8"],
+# ["o4 e-8 p8","o4 c16 <b-16 >c16 e-16","o2 <a-8 >e-8"],
+# ["o4 e-8 p8","o4 <g16 f16 g16 >e-16","o2 <b-8 >e-8"],
+# ["o4 e-8 p8","o4 <a-16 g16 a-16 >e-16","o2 c8 e-8"],
+# ["o4 p16 e-16 f16 g16","o4 <g8 b-8","o2 <b-8 p8"],
+# ["o4 a-16 b-16 >c16 <b-16","o3 >e-8 <g8","o1 >c8 p8"],
+# ["o4 a-16 g16 f16 a-16","o3 f8 b-8","o2 d8 p8"],
+# ["o4 g8 <b-8","o3 p16 e-16 f16 g16","o2 e-4"],
+# ["o3 >c8 <a-8","o3 a-16 b-16 >c16 <b-16","o2 e-4"],
+# ["o3 >f4","o3 a-16 g16 f16 a-16","o2 d4"],
+# ["o4 p16 a-16 g16 f16","o3 g8 <b-8","o2 e-4"],
+# ["o4 e-16 d16 c16 <b-16","o2 >c8 <a-8","o2 a-4"],
+# ["o3 a-16 g16 a-16 >f16","o2 >f4","o2 p4"],
+# ["o4 <g16 >f16 e-16 d16","o3 p16 a-16 g16 f16","o2 <b4"],
+# ["o4 c16 <b-16 a-16 g16","o3 e-16 d16 c16 <b-16","o1 >c4"],
+# ["o3 f4","o2 a-16 g16 a-16 >f16","o2 d4"],
+# ["o3 p16 a-16 g16 f16","o3 <g16 >f16 e-16 d16","o2 <e-4"],
+# ["o3 e-4","o3 c16 <b-16 a-16 g16","o1 a-4"],
+# ["o3 p16 d16 e-16 f16","o2 f4","o1 a-4"],
+# ["o3 <b8 >d8","o2 p16 a-16 g16 f16","o1 g4"],
+# ["o3 g8 b8","o2 e-8 g8","o1 p16 >g16 f16 g16"],
+# ["o3 >c8 d8","o2 a8 b8","o2 e-16 f16 d16 e-16"],
+# ["o4 e-16 c16 <b16 >c16","o3 c8 p8","o2 c8 e-8"],
+# ["o4 <g16 >c16 <b16 >c16","o3 p4","o2 c8 e-8"],
+# ["o4 e-16 c16 <b-16 >c16","o3 p4","o2 c8 e-8"],
+# ["o4 <a-8 p8","o3 p16 f16 e-16 f16","o2 <f8 >a-8"],
+# ["o3 >e-8 p8","o3 c16 f16 e-16 f16","o2 <f8 >a-8"],
+# ["o4 e-8 p8","o3 a-16 f16 e-16 f16","o2 <f8 >a-8"],
+# ["o4 p16 <b-16 a-16 b-16","o3 d8 p8","o2 <b-8 >d8"],
+# ["o3 f16 b-16 a-16 b-16","o3 a-8 p8","o2 <b-8 >d8"],
+# ["o3 >d16 <b-16 a-16 b-16","o3 a-8 p8","o2 <b-8 >d8"],
+# ["o3 g8 p8","o3 p16 e-16 d-16 e-16","o2 <e-8 >g8"],
+# ["o3 >d-8 p8","o3 <b-16 >e-16 d-16 e-16","o2 <e-8 >g8"],
+# ["o4 d-8 p8","o3 g16 e-16 d-16 e-16","o2 <e-8 g8"],
+# ["o3 p16 a-16 g16 a-16","o3 c16 f16 e16 f16","o1 a-8 >c8"],
+# ["o3 f16 a-16 g16 a-16","o3 c16 f16 e16 f16","o2 <a-8 >c8"],
+# ["o3 >c16 <a-16 g16 a-16","o3 a-16 f16 e-16 f16","o2 <a-8 >c8"],
+# ["o3 f16 b-16 a-16 b-16","o3 d8 f8","o2 <a-8 >d8"],
+# ["o3 >d16 <b-16 a-16 b-16","o3 b-4","o2 <a-8 >d8"],
+# ["o3 >f16 d16 c16 d16","o3 b-4","o2 <a-8 >d8"],
+# ["o4 b-8 g8","o3 p16 <b-16 a-16 b-16","o2 <g8 >e-8"],
+# ["o4 e-4","o2 >e-16 <b-16 a-16 b-16","o2 <g8 >e-8"],
+# ["o4 e-4","o2 >g16 e-16 d16 e-16","o2 <g8 >e-8"],
+# ["o4 p16 d16 c16 <b-16","o3 a16 b-16 a16 g16","o2 <f4"],
+# ["o3 a16 b-16 a16 g16","o3 f16 >d16 c16 <b-16","o1 p4"],
+# ["o3 f16 >e-16 d16 c16","o3 a16 g16 f16 e-16","o1 p4"],
+# ["o3 b-4","o3 d16 c16 d16 f16","o1 b-8 >b-8"],
+# ["o3 b-4","o3 e-16 d16 e-16 g16","o2 c8 b-8"],
+# ["o3 b-4","o3 f16 e-16 f16 a-16","o2 d8 b-8"],
+# ["o3 p16 a16 b-16 >e-16","o3 g16 f16 g16 b-16","o2 e-8 b-8"],
+# ["o4 <b-16 a16 b-16 >d16","o3 d16 c16 d16 b-16","o2 f8 b-8"],
+# ["o4 c4","o3 e-16 d16 e-16 b-16","o2 g8 b-8"],
+# ["o4 p16 g16 f16 e-16","o3 d4","o2 f8 b-8"],
+# ["o4 d16 b-16 a16 g16","o3 p16 >d16 c16 <b-16","o2 e-8 b-8"],
+# ["o4 f16 e-16 d16 c16","o3 a16 g16 f16 e-16","o2 f8 a8"],
+# ["o3 b-8 >f8","o3 d16 b-16 a16 b-16","o1 b-4"],
+# ["o4 g8 f8","o3 e-16 b-16 d16 b-16","o1 p4"],
+# ["o4 g8 f8","o3 e-16 b-16 c16 b-16","o1 p4"],
+# ["o4 f16 b-16 a16 b-16","o3 d8 f8","o1 b-4"],
+# ["o4 e-16 b-16 d16 b-16","o3 g8 f8","o1 p4"],
+# ["o4 e-16 b-16 c16 b-16","o3 g8 e-8","o1 p4"],
+# ["o4 d4","o3 f16 <b-16 >c16 d16","o1 p8 >f8"],
+# ["o4 p16 <b-16 >c16 d16","o3 e-4","o2 g8 f8"],
+# ["o4 e-16 f16 g16 a16","o3 p16 d16 e-16 c16","o2 g8 e-8"],
+# ["o4 b-8 <b-8","o3 f8 d8","o2 d8 g8"],
+# ["o3 >c8 p8","o3 e-8 p8","o2 e-8 p8"],
+# ["o4 <a4","o3 c4","o2 f4"],
+# ["o3 mlb-4","o3 mld4","o1 mlb-4"],
+# ["o3 b-4","o3 d4","o1 b-4"],
+# ["o3 b-4","o3 d4","o1 b-4"]]
 
+#lines = [["cdefgab>c", "efgab>cde", "gab>cdefg"]]
 
+lines = [["t140mll8g4.g>ce","l8cp4c","l8<ep4e"],
+         ["t140mll8>d4.d<b->a","l8dp4d","l8<fp4f "]]
 for music in lines:
     pianoroll = []
 
@@ -266,7 +292,7 @@ for music in lines:
 
     pianoroll.sort(key=lambda x: x[3])
 
-    print(pianoroll)
+    #print(pianoroll)
 
     dt = datetime.now()
     for i in pianoroll:
@@ -286,7 +312,7 @@ for music in lines:
 
 #m = ["t64l12"+"v4<a>v7cv12e"*4]
 
-for i in m:
-    play = PlayStatement()
-    play.statement = i.lower()
-    play.sound()
+# for i in m:
+#     play = PlayStatement()
+#     play.statement = i.lower()
+#     play.sound()
