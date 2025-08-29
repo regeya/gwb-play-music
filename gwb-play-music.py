@@ -2,16 +2,12 @@
 # an attempt to write a GW-BASIC-style "play" statement
 
 import pygame
-import time
 import re
-import struct
-import string
 from array import array
 from time import sleep
 from datetime import datetime
 from pygame.locals import *
 from pygame.mixer import Sound, get_init, pre_init
-from collections import deque
 
 
 class Note(Sound):
@@ -97,22 +93,18 @@ class PlayStatement:
     def parse_string(self, play_string):
         self.mybuffer = []
         timecode = 0
-        tokenized = deque(
-            [f for f in re.findall("([a-z]|[0-9]+|[#+-><])", play_string) if f]
-        )
+        split_str = [f for f in re.findall("([a-z]|[0-9]+|[#+-><])", play_string) if f]
         myarray = []
-        while len(tokenized) >= 1:
+        for i, j in zip(split_str, split_str[1:]):
             sharp = 0
-            i = tokenized.popleft()
             if i == ">":
                 self.modifier += 12
             if i == "l":
-                k = tokenized.popleft()
-                self.current_notelen = int(k)
+                if j.isdigit():
+                    self.current_notelen = int(j)
             elif i == "<":
                 self.modifier -= 12
             elif i == "m":
-                j = tokenized.popleft()
                 if j == "l":
                     self.note_dur = 1.0
                 elif j == "n":
@@ -120,25 +112,20 @@ class PlayStatement:
                 elif j == "s":
                     self.note_dur = 0.75
             elif i == "t":
-                j = tokenized.popleft()
                 self.tempo = int(j)
             elif i == "q":
-                j = tokenized.popleft()
                 if int(j) == 1:
                     self.env = 1
                 else:
                     self.env = 0
             elif i == "v":
-                j = tokenized.popleft()
                 if int(j) > 9:
                     self.current_volume = self.volumes[9]
                 else:
                     self.current_volume = self.volumes[int(j)]
             elif i == "o":
-                j = tokenized.popleft()
                 self.modifier = (int(j) - self.octave) * 12
             elif i == "p":
-                j = tokenized.popleft()
                 if j:
                     self.notelen = int(j)
                     f = 60.0 / (self.tempo * (self.notelen / 4.0))
@@ -154,25 +141,19 @@ class PlayStatement:
             elif i in self.major_notes:
                 dotted = False
                 try:
-                    k = tokenized.popleft()
-                    print(tokenized, i, k)
-                    if k:
-                        if k == "#" or k == "+":
+                    print(tokenized, i, j)
+                    if j:
+                        if j == "#" or j == "+":
                             sharp = 1
-                        elif k == "-":
+                        elif j == "-":
                             sharp = -1
-                        elif k.isdigit():
-                            self.notelen = int(k)
-                        else:
-                            tokenized.appendleft(k)
+                        elif j.isdigit():
+                            self.notelen = int(j)
                 except:
                     print("Queue exhausted and so am I")
                 try:
-                    k = tokenized.popleft()
-                    if k == ".":
+                    if j == ".":
                         dotted = True
-                    else:
-                        tokenized.appendleft(k)
                 except:
                     print("disconnect the dots")
                 frequency = self.a4 * (
