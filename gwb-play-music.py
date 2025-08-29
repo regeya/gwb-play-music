@@ -13,8 +13,9 @@ from pygame.locals import *
 from pygame.mixer import Sound, get_init, pre_init
 from collections import deque
 
+
 class Note(Sound):
-    def __init__(self, frequency, volume=.1):
+    def __init__(self, frequency, volume=0.1):
         self.frequency = frequency
         Sound.__init__(self, self.build_samples())
         self.set_volume(volume)
@@ -30,19 +31,23 @@ class Note(Sound):
                 samples[time] = -amplitude
         return samples
 
+
 class PlayStatement:
     """an attempt to write a GW-BASIC style PLAY, complete with square-wave audio"""
+
     bits = 16
     tempo = 120
     a4 = 1760
-    octave = 4 # default to 4
+    octave = 4  # default to 4
     sample_rate = 44100
-    max_sample = 2**(bits - 1) - 1 # for example, if 16 bits, highest positive number is 2**(15) -1 or 32767
+    max_sample = (
+        2 ** (bits - 1) - 1
+    )  # for example, if 16 bits, highest positive number is 2**(15) -1 or 32767
     default_volume = 9
     top_amp = int(max_sample)
-    volumes = [0]*16
-    volume_factor = 1 / 10 ** (2/20.0)
-    note_dur = 7/8.0
+    volumes = [0] * 16
+    volume_factor = 1 / 10 ** (2 / 20.0)
+    note_dur = 7 / 8.0
     modifier = 0
     default_notelen = 4
     current_notelen = default_notelen
@@ -51,7 +56,7 @@ class PlayStatement:
     major_notes = "cdefgab"
     starting_note = -9
     intervals = [2, 2, 1, 2, 2, 2, 1]
-    notes_range={}
+    notes_range = {}
     note = starting_note
     statement = ""
     mybuffer = []
@@ -63,11 +68,13 @@ class PlayStatement:
         for i, j in zip(self.major_notes, self.intervals):
             self.notes_range[i] = note
             note += j
-        for i in range(15,0,-1):
+        for i in range(15, 0, -1):
             self.volumes[i] = int(amp)
             amp *= self.volume_factor
         self.current_volume = self.volumes[self.default_volume]
-        pygame.mixer.init(frequency=self.sample_rate, size=-self.bits, channels=1, allowedchanges=0)
+        pygame.mixer.init(
+            frequency=self.sample_rate, size=-self.bits, channels=1, allowedchanges=0
+        )
         self.array = []
 
     def build_samples(self, frequency):
@@ -82,16 +89,20 @@ class PlayStatement:
         return samples
 
     def play_note(self, i, sharp):
-        frequency = self.a4 * (2 ** ((self.notes_range[i]+self.modifier+sharp)/12.0))
+        frequency = self.a4 * (
+            2 ** ((self.notes_range[i] + self.modifier + sharp) / 12.0)
+        )
         return self.build_samples(frequency)
 
     def parse_string(self, play_string):
         self.mybuffer = []
-        timecode=0
-        tokenized = deque([f for f in re.findall("([a-z]|[0-9]+|[#+-><])", play_string) if f])
+        timecode = 0
+        tokenized = deque(
+            [f for f in re.findall("([a-z]|[0-9]+|[#+-><])", play_string) if f]
+        )
         myarray = []
         while len(tokenized) >= 1:
-            sharp=0
+            sharp = 0
             i = tokenized.popleft()
             if i == ">":
                 self.modifier += 12
@@ -100,7 +111,7 @@ class PlayStatement:
                 self.current_notelen = int(k)
             elif i == "<":
                 self.modifier -= 12
-            elif i == 'm':
+            elif i == "m":
                 j = tokenized.popleft()
                 if j == "l":
                     self.note_dur = 1.0
@@ -130,11 +141,18 @@ class PlayStatement:
                 j = tokenized.popleft()
                 if j:
                     self.notelen = int(j)
-                    f = 60.0/(self.tempo*(self.notelen/4.0))
-                    self.mybuffer.append([self.channel,0,self.current_volume,int((timecode+f)*1000)])
+                    f = 60.0 / (self.tempo * (self.notelen / 4.0))
+                    self.mybuffer.append(
+                        [
+                            self.channel,
+                            0,
+                            self.current_volume,
+                            int((timecode + f) * 1000),
+                        ]
+                    )
                     timecode += f
             elif i in self.major_notes:
-                dotted=False
+                dotted = False
                 try:
                     k = tokenized.popleft()
                     print(tokenized, i, k)
@@ -156,24 +174,31 @@ class PlayStatement:
                     else:
                         tokenized.appendleft(k)
                 except:
-                    print("disconnect the dots")    
-                frequency = self.a4 * (2 ** ((self.notes_range[i]+self.modifier+sharp)/12.0))
-                self.mybuffer.append([self.channel, frequency, self.current_volume, int(timecode*1000)])
+                    print("disconnect the dots")
+                frequency = self.a4 * (
+                    2 ** ((self.notes_range[i] + self.modifier + sharp) / 12.0)
+                )
+                self.mybuffer.append(
+                    [self.channel, frequency, self.current_volume, int(timecode * 1000)]
+                )
                 my_duration = 60.0 / (self.tempo * (self.notelen / 4.0))
                 if dotted:
-                    my_duration = my_duration * (3/2.0)
+                    my_duration = my_duration * (3 / 2.0)
                 cur_duration = my_duration * self.note_dur
                 cur_pause = my_duration - cur_duration
                 timecode += cur_duration
-                self.mybuffer.append([self.channel,0,self.current_volume, int(timecode*1000)])
+                self.mybuffer.append(
+                    [self.channel, 0, self.current_volume, int(timecode * 1000)]
+                )
                 timecode += cur_pause
             self.notelen = self.current_notelen
 
     def sound(self):
-         self.parse_string(self.statement)
-         return self.mybuffer
+        self.parse_string(self.statement)
+        return self.mybuffer
 
-#m = ["o2l6p6p6go3el12p12dl6ecl3fl12fl24edl12eagal6dl3gl12gl24fel12fco2bo3f",
+
+# m = ["o2l6p6p6go3el12p12dl6ecl3fl12fl24edl12eagal6dl3gl12gl24fel12fco2bo3f",
 #     "o2l6p6p6p6p6p6cal12p12gl6ago3l3cl12cl24o2bal12bo3edel6o2al3o3d",
 #     "o1l1ccc"]
 
@@ -277,10 +302,12 @@ class PlayStatement:
 # ["o3 b-4","o3 d4","o1 b-4"],
 # ["o3 b-4","o3 d4","o1 b-4"]]
 
-#lines = [["cdefgab>c", "efgab>cde", "gab>cdefg"]]
+# lines = [["cdefgab>c", "efgab>cde", "gab>cdefg"]]
 
-lines = [["t140mll8g4.g>ce","l8cp4c","l8<ep4e"],
-         ["t140mll8>d4.d<b->a","l8dp4d","l8<fp4f "]]
+lines = [
+    ["t140mll8g4.g>ce", "l8cp4c", "l8<ep4e"],
+    ["t140mll8>d4.d<b->a", "l8dp4d", "l8<fp4f "],
+]
 for music in lines:
     pianoroll = []
 
@@ -292,7 +319,7 @@ for music in lines:
 
     pianoroll.sort(key=lambda x: x[3])
 
-    #print(pianoroll)
+    # print(pianoroll)
 
     dt = datetime.now()
     for i in pianoroll:
@@ -310,7 +337,7 @@ for music in lines:
 #     "D8 D8 E8 C8 D8 E12 F12 E8 C8 D8 E12 F12 E8 D8 C8 D8 P8",
 #     "E8 E8 F8 G8 G8 F8 E8 D8 C8 C8 D8 E8 D8 C12 C4"]
 
-#m = ["t64l12"+"v4<a>v7cv12e"*4]
+# m = ["t64l12"+"v4<a>v7cv12e"*4]
 
 # for i in m:
 #     play = PlayStatement()
