@@ -2,17 +2,56 @@
 
 import pygame.midi, time, random
 
+# Initialize pygame.midi
 pygame.midi.init()
 
-midi_out = pygame.midi.Output(2,0)
-midi_out.set_instrument(0)
+# Find the virtual MIDI port
+device_id = -1
+for i in range(pygame.midi.get_count()):
+    device_info = pygame.midi.get_device_info(i)
+    if (
+        device_info[1] == b"Midi Through"
+    ):  # The virtual port is often named "Midi Through"
+        device_id = i
+        break
 
-major_scale = [2,2,1,2,2,2,1]
-minor_scale = [2,1,2,2,1,2,2]
+if device_id == -1:
+    print("Could not find virtual MIDI port. Make sure one is created.")
+    pygame.midi.quit()
+    exit()
+
+# Open the MIDI output stream
+try:
+    midi_out = pygame.midi.Output(device_id)
+
+    # Play a C4 note (MIDI note 60) for 1 second
+    note = 60
+    velocity = 127
+    channel = 0
+
+    print(f"Playing note {note}...")
+    midi_out.note_on(note, velocity, channel)
+    time.sleep(1)
+    midi_out.note_off(note, velocity, channel)
+
+except pygame.midi.MidiException as e:
+    print(f"An error occurred: {e}")
+
+finally:
+    # Clean up
+    midi_out.close()
+    pygame.midi.quit()
+    print("Done.")
+
+# midi_out = pygame.midi.Output(0, 0)
+# midi_out.set_instrument(0)
+
+major_scale = [2, 2, 1, 2, 2, 2, 1]
+minor_scale = [2, 1, 2, 2, 1, 2, 2]
 
 starting_note = 60
-#my_note = starting_note
-#for i in range(8):
+# my_note = starting_note
+# for i in range(8):
 #    if i > 0:
 #        my_note = starting_note + sum(mino_scale[0:i])
 #    my_velocity = random.randint(80,127)
@@ -23,12 +62,13 @@ starting_note = 60
 my_str = "O3MBT120L8C+DEFGAB>C"
 
 sharps = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
-flats = ['C', 'D-', 'D', 'E-', 'E', 'F', 'G-', 'G', 'A-', 'A', 'B-', 'B']
+flats = ["C", "D-", "D", "E-", "E", "F", "G-", "G", "A-", "A", "B-", "B"]
 all_notes = sharps + flats
 midi_notes = list(range(60, 72))
 
 notes = {k: v for k, v in zip(sharps, midi_notes)}
 notes.update({k: v for k, v in zip(flats, midi_notes)})
+
 
 def build_list(my_str):
     mylist = []
@@ -49,10 +89,11 @@ def build_list(my_str):
             mylist.append(i)
     return mylist
 
+
 notes_to_parse = build_list(my_str)
 
-for i in ['C','D','E', 'F','G','A','B']:
-    mynote = notes[i]
-    midi_out.note_on(mynote, 96)
-    time.sleep(1)
-    midi_out.note_off(mynote, 96)
+# for i in ["C", "D", "E", "F", "G", "A", "B"]:
+#    mynote = notes[i]
+#    midi_out.note_on(mynote, 96)
+#    time.sleep(1)
+#    midi_out.note_off(mynote, 96)
