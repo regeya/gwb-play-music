@@ -8,6 +8,7 @@ from time import sleep
 from datetime import datetime
 from pygame.locals import *
 from pygame.mixer import Sound, get_init, pre_init
+from collections import deque
 
 
 class Note(Sound):
