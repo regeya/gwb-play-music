@@ -7,10 +7,13 @@ pygame.midi.init()
 
 # Find the virtual MIDI port
 device_id = -1
+print(pygame.midi.get_count())
 for i in range(pygame.midi.get_count()):
+    print(i)
     device_info = pygame.midi.get_device_info(i)
-    if (
-        device_info[1] == b"Midi Through"
+    print(device_info)
+    if "Midi Through" in str(
+        device_info[1]
     ):  # The virtual port is often named "Midi Through"
         device_id = i
         break
