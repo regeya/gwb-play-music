@@ -30,7 +30,6 @@ try:
     midi_out = pygame.midi.Output(device_id)
 except pygame.midi.MidiException as e:
     print(f"An error occurred: {e}")
-
 finally:
     print("Done.")
 
@@ -40,7 +39,7 @@ finally:
 major_scale = [2, 2, 1, 2, 2, 2, 1]
 minor_scale = [2, 1, 2, 2, 1, 2, 2]
 
-starting_note = 62
+starting_note = 60
 my_note = starting_note
 for i in range(8):
     if i > 0:
