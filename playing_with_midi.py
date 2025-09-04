@@ -24,26 +24,14 @@ if device_id == -1:
     exit()
 
 # Open the MIDI output stream
+midi_out = None
+
 try:
     midi_out = pygame.midi.Output(device_id)
-
-    # Play a C4 note (MIDI note 60) for 1 second
-    note = 60
-    velocity = 127
-    channel = 0
-
-    print(f"Playing note {note}...")
-    midi_out.note_on(note, velocity, channel)
-    time.sleep(1)
-    midi_out.note_off(note, velocity, channel)
-
 except pygame.midi.MidiException as e:
     print(f"An error occurred: {e}")
 
 finally:
-    # Clean up
-    midi_out.close()
-    pygame.midi.quit()
     print("Done.")
 
 # midi_out = pygame.midi.Output(0, 0)
@@ -52,15 +40,15 @@ finally:
 major_scale = [2, 2, 1, 2, 2, 2, 1]
 minor_scale = [2, 1, 2, 2, 1, 2, 2]
 
-starting_note = 60
-# my_note = starting_note
-# for i in range(8):
-#    if i > 0:
-#        my_note = starting_note + sum(mino_scale[0:i])
-#    my_velocity = random.randint(80,127)
-#    midi_out.note_on(my_note,my_velocity)
-#    time.sleep(random.uniform(0.45,0.55))
-#    midi_out.note_off(my_note,my_velocity)
+starting_note = 62
+my_note = starting_note
+for i in range(8):
+    if i > 0:
+        my_note = starting_note + sum(minor_scale[0:i])
+    my_velocity = random.randint(80, 127)
+    midi_out.note_on(my_note, my_velocity)
+    time.sleep(random.uniform(0.45, 0.55))
+    midi_out.note_off(my_note, my_velocity)
 
 my_str = "O3MBT120L8C+DEFGAB>C"
 
@@ -100,3 +88,6 @@ notes_to_parse = build_list(my_str)
 #    midi_out.note_on(mynote, 96)
 #    time.sleep(1)
 #    midi_out.note_off(mynote, 96)
+#
+midi_out.close()
+pygame.midi.quit()
